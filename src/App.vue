@@ -1,6 +1,5 @@
-
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Background } from '@vue-flow/background'
 import { Position, VueFlow, MarkerType } from '@vue-flow/core'
 import axios from 'axios'
@@ -28,24 +27,17 @@ const formatResponse = (results) => {
   return list
 }
 
+function calculate(input) {
+  let sum = 0;
+  for (let i = 1; i <= input; i++) {
+    sum += 50 * (i - 1);
+  }
+  return sum / input;
+}
 
-const nodes = ref([
-  { id: '1', type: 'input', label: 'Node 1', position: { x: 100, y: 100 } , sourcePosition: Position.Right},
-  { id: '2', type: 'output',label: 'Node 2', position: { x: 400, y: 0 } , targetPosition: Position.Left},
-  { id: '3', type: 'output',label: 'Node 3', position: { x: 400, y: 100 } , targetPosition: Position.Left},
-  { id: '4', type: 'output',label: 'Node 4', position: { x: 400, y: 200 } , targetPosition: Position.Left},
+const nodes = ref([])
 
-])
-
-const edges = ref([
-  { id: 'e1-2', source: '1', target: '2', animated: true, markerEnd: MarkerType.ArrowClosed},
-  { id: 'e1-3', source: '1', target: '3', animated: true, markerEnd: MarkerType.ArrowClosed},
-  { id: 'e3-4', source: '1', target: '4', animated: true, markerEnd: MarkerType.ArrowClosed},
-])
-
-// const nodes = ref([])
-
-// const edges = ref([])
+const edges = ref([])
 
 const as_info_query = ref({
   loading: true,
@@ -66,27 +58,62 @@ const searchASN = async() => {
     res.push(formatResponse(rows[i]))
   }
 
-  console.log(res)
-
-  return res
-
+  sortNodes(res[0])
 
 }
 
+const sortEdges = (res) => {
+
+  let index = 1
+  while(index != nodes.value.length) {
+      edges.value.push({ id: `e1-${nodes.value[index].id}`, label: `${res[index-1].Hege.toFixed(2)}%`, source: '1', target: nodes.value[index].id, animated: true, markerEnd: MarkerType.ArrowClosed})
+      index++
+  } 
+
+}
+
+const sortNodes = (res) => {
+
+  if(res.length > 0) {
+
+    nodes.value = []
+    edges.value = []
+
+    nodes.value.push( {id: '1', type: 'input', label: `AS${asn.value}`, position: { x: -100, y: calculate(res.length) } , sourcePosition: Position.Right, dimensions: {"height":0, "width":0}})
+  
+    let y_axis = 0
+    let id = 2
+
+    for(const node of res) {
+      nodes.value.push( {id: String(id), type: 'output',label: `AS${String(node.B)}`, position: { x: 400, y: y_axis } , targetPosition: Position.Left})
+      y_axis+=50
+      id++
+    }
+
+    sortEdges(res)
+
+}
+
+}
+
+onMounted(() => {
+  asn.value = "2497"
+  searchASN()
+})
 
 </script>
 
 <template>
 
 
-      <div class="search-div row">
-        <q-input class="search-asn" filled v-model="asn" label="ASN"  />
-        <q-btn @click=searchASN() color="primary" label="Search"  style="min-width: 120px; margin-left:20px;"/>
-      </div>
+  <div class="search-div row">
+    <q-input class="search-asn" filled v-model="asn" label="ASN"  />
+    <q-btn @click=searchASN() color="primary" label="Search"  style="min-width: 120px; margin-left:20px;"/>
+  </div>
 
-      <VueFlow style="width: 900px; height: 600px"  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
-        <Background   :gap=6  />
-      </VueFlow>
+  <VueFlow style="width: 900px; height: 600px"  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
+    <Background   :gap=6  />
+  </VueFlow>
 
 
       
