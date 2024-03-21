@@ -186,10 +186,10 @@ const sortEdges = () => {
 
 
     if(index2 > index1){
-      edges.value.push({ id: `${rel[0]}-${rel[1]}`, source: String(rel[0]), target: String(rel[1]), animated: true})
+      edges.value.push({ id: `${rel[0]}-${rel[1]}`, style: { stroke: 'orange' }, source: String(rel[0]), target: String(rel[1]), animated: true})
     }
     else if(index1 > index2){
-      edges.value.push({ id: `${rel[1]}-${rel[0]}`, source: String(rel[1]), target: String(rel[0]), animated: true})
+      edges.value.push({ id: `${rel[1]}-${rel[0]}`, style: { stroke: 'orange' }, source: String(rel[1]), target: String(rel[0]), animated: true})
     }
 
   
@@ -206,18 +206,10 @@ const sortNodes = (index) => {
 
   for(let i=0 ; i!= allNodes.value.length ; i++) {
 
-    if(allNodes.value[i].length == 1){
+    if(allNodes.value[i].length  == 1){
 
       for(let j=0 ; j!= allNodes.value[i].length ; j++) {
-        nodes.value.push({id: String(allNodes.value[i][j]), type: 'output', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: calculate(allNodes.value[index].length) }, targetPosition: Position.Left})
-      }
-
-    }
-
-    else if(i == allNodes.value.length - 1){
-
-      for(let j=0 ; j!= allNodes.value[i].length ; j++) {
-        nodes.value.push({id: String(allNodes.value[i][j]), type: 'output', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: allNodesPosition.value[i][j] }, targetPosition: Position.Left})
+        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: calculate(allNodes.value[index].length) }, sourcePosition: Position.Right, targetPosition: Position.Left})
       }
 
     }else{
@@ -225,6 +217,7 @@ const sortNodes = (index) => {
       for(let j=0 ; j!= allNodes.value[i].length ; j++) {
         nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: allNodesPosition.value[i][j] }, sourcePosition: Position.Right, targetPosition: Position.Left})
       }
+
 
     }
 
@@ -237,7 +230,7 @@ const sortNodes = (index) => {
 }
 
 onMounted(() => {
-  asn.value = "174"
+  asn.value = "55836"
   searchASN()
 })
 
@@ -252,7 +245,7 @@ onMounted(() => {
   </div>
 
   <VueFlow style="width: 900px; height: 600px" class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
-    <Background :gap=6 />
+    <Background patternColor="black" :gap=7 />
   </VueFlow>
 
 
@@ -268,11 +261,11 @@ onMounted(() => {
   margin-top: 30px;
 }
 
-
 .vueTest{
   margin: 0 auto;
   margin-top: 30px;
   min-width: 400px;
+  border: black solid 4px;
   
 }
 
