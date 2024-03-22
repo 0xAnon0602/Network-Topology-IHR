@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Background } from '@vue-flow/background'
 import { Position, VueFlow, MarkerType, useVueFlow } from '@vue-flow/core'
 import axios from 'axios'
+import { QSpinner } from 'quasar'
 
 
 const IYP_API_BASE = 'https://iyp.iijlab.net/iyp/db/neo4j/tx/'
@@ -40,17 +41,32 @@ const nodes = ref([])
 const allNodes = ref([])
 const allNodesPosition = ref([])
 const allRelation = ref([])
-
+const asNames = ref({})
 const edges = ref([])
 
 const as_info_query = ref({
-  loading: true,
+  loading: false,
   query:`MATCH (a:AS {asn: $asn})-[h:DEPENDS_ON {af:4}]->(d:AS)
           WITH a, COLLECT(DISTINCT d) AS dependencies
           UNWIND dependencies as d
           MATCH p = allShortestPaths((a)-[:PEERS_WITH*]-(d))
           WHERE a.asn <> d.asn AND all(r IN relationships(p) WHERE r.af = 4) AND all(n IN nodes(p) WHERE n IN dependencies)
-          RETURN p`
+          RETURN p`,
+  query2:`MATCH (a:AS)
+          WHERE a.asn IN $asns
+          OPTIONAL MATCH (a)-[:NAME {reference_org: 'PeeringDB'}]->(pdbn:Name)
+          OPTIONAL MATCH (a)-[:NAME {reference_org: 'BGP.Tools'}]->(btn:Name)
+          OPTIONAL MATCH (a)-[:NAME {reference_org: 'RIPE NCC'}]->(ripen:Name)
+          WITH a.asn AS asn, [pdbn.name, btn.name, ripen.name] AS names
+          UNWIND names AS name
+          WITH asn, name
+          WHERE name IS NOT NULL
+          WITH asn, COLLECT(name) AS validNames
+          UNWIND validNames AS validName
+          WITH asn, validName
+          ORDER BY size(validName)
+          WITH asn, COLLECT(validName)[0] AS shortestName
+          RETURN asn, shortestName`
 })    
 
 const searchASN = async() => {
@@ -60,11 +76,15 @@ const searchASN = async() => {
   nodes.value = []
   allRelation.value = []
   edges.value = []
+  asNames.value = {}
+  as_info_query.value.loading = true
 
-  let response = await axios_base.post('', {
+  let uniqueASNs = []
+
+
+  const response = await axios_base.post('', {
     statements: [{statement: as_info_query.value.query, parameters:{ asn: Number(asn.value) }}]
   })
-
 
   const rows = response.data.results
   const res = []
@@ -82,6 +102,14 @@ const searchASN = async() => {
       for(const finalConnection of connection.p) {
 
         if((Object.keys(finalConnection)).length != 1 ){
+          
+          if(!(uniqueASNs.includes(finalConnection.asn1))){
+            uniqueASNs.push(finalConnection.asn1);
+          }
+
+          if(!(uniqueASNs.includes(finalConnection.asn2))){
+            uniqueASNs.push(finalConnection.asn2);
+          }
 
           allRelation.value.push([finalConnection.asn1, finalConnection.asn2])
 
@@ -133,35 +161,56 @@ const searchASN = async() => {
 
   }
 
-  const indexOfLargest = allNodes.value.reduce((maxIndex, currentElement, currentIndex, array) => {
-  return currentElement.length > array[maxIndex].length ? currentIndex : maxIndex;}, 0); 
+  try{
 
-  allNodesPosition.value = Array.from({ length: allNodes.value.length }, () => []);
+    const indexOfLargest = allNodes.value.reduce((maxIndex, currentElement, currentIndex, array) => {
+    return currentElement.length > array[maxIndex].length ? currentIndex : maxIndex;}, 0); 
 
-  let position_y = 0
-  
-  for(let i=0; i!= allNodes.value[indexOfLargest].length; i++) {
-    allNodesPosition.value[indexOfLargest].push(position_y)
-    position_y += 50
-  }
+    allNodesPosition.value = Array.from({ length: allNodes.value.length }, () => []);
 
-  for(let i=0; i!=allNodesPosition.value.length; i++) {
+    let position_y = 0
+    
+    for(let i=0; i!= allNodes.value[indexOfLargest].length; i++) {
+      allNodesPosition.value[indexOfLargest].push(position_y)
+      position_y += 50
+    }
 
-    if(i != indexOfLargest) {
+    for(let i=0; i!=allNodesPosition.value.length; i++) {
 
-      const increase = position_y /( allNodes.value[i].length + 1)
-      let inital_y = increase
+      if(i != indexOfLargest) {
 
-      for(let j=0; j!= allNodes.value[i].length; j++) {
-        allNodesPosition.value[i].push(inital_y)
-        inital_y += increase
-      }      
+        const increase = position_y /( allNodes.value[i].length + 1)
+        let inital_y = increase
+
+        for(let j=0; j!= allNodes.value[i].length; j++) {
+          allNodesPosition.value[i].push(inital_y)
+          inital_y += increase
+        }      
+
+      }
 
     }
 
-  }
+    const response2 = await axios_base.post('', {
+        statements: [{statement: as_info_query.value.query2, parameters:{ asns: uniqueASNs }}]
+    })
 
-  sortNodes(indexOfLargest)
+    const rows2 = response2.data.results
+    const res2 = []
+    for (let i=0; i<rows.length; i++) {
+      res2.push(formatResponse(rows2[i]))
+    }
+
+    for(const result of res2[0]){
+      asNames.value[result.asn] = result.shortestName
+    }
+
+      
+    sortNodes(indexOfLargest)
+
+  }catch(e){
+    as_info_query.value.loading = false
+  }
 
 }
 
@@ -195,12 +244,14 @@ const sortEdges = () => {
   
   }
 
+  as_info_query.value.loading = false
+
 }
 
 const sortNodes = (index) => {
 
   nodes.values = []
-  nodes.value.push({id: asn.value, type: 'input', label: `AS${asn.value}`, position: { x: 0, y: calculate(allNodes.value[index].length) } , sourcePosition: Position.Right})
+  nodes.value.push({id: asn.value, type: 'input', label: `AS${asn.value}<br />`, position: { x: 0, y: calculate(allNodes.value[index].length) } , sourcePosition: Position.Right})
 
   let x_index = 300
 
@@ -244,10 +295,19 @@ onMounted(() => {
     <q-btn @click=searchASN() color="primary" label="Search"  style="min-width: 120px; margin-left:20px;"/>
   </div>
 
-  <VueFlow  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
+
+  <VueFlow v-if="allNodes.length != 0"  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
     <Background patternColor="black" :gap=7 />
   </VueFlow>
 
+  <div v-if="as_info_query.loading" class="loading-spinner">
+    <QSpinner color="secondary" size="5em" />
+  </div>
+
+
+  <div v-if="!as_info_query.loading && allNodes.length == 0" class="loading-spinner">
+    <h4> No Data Found </h4>
+  </div>
 
       
 </template>
@@ -267,6 +327,10 @@ onMounted(() => {
   border: black solid 4px;
   width: 80%;
   height: 80%;
+}
+
+.loading-spinner{
+  margin-top: 200px;
 }
 
 
