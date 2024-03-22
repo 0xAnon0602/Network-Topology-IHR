@@ -244,7 +244,7 @@ onMounted(() => {
     <q-btn @click=searchASN() color="primary" label="Search"  style="min-width: 120px; margin-left:20px;"/>
   </div>
 
-  <VueFlow style="width: 900px; height: 600px" class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
+  <VueFlow  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
     <Background patternColor="black" :gap=7 />
   </VueFlow>
 
@@ -264,9 +264,9 @@ onMounted(() => {
 .vueTest{
   margin: 0 auto;
   margin-top: 30px;
-  min-width: 400px;
   border: black solid 4px;
-  
+  width: 80%;
+  height: 80%;
 }
 
 
