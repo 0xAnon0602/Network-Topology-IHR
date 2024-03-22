@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Background } from '@vue-flow/background'
-import { Position, VueFlow, MarkerType, useVueFlow } from '@vue-flow/core'
+import { Position, VueFlow, MarkerType, useVueFlow, Panel } from '@vue-flow/core'
 import axios from 'axios'
 import { QSpinner } from 'quasar'
 
@@ -294,6 +294,7 @@ onMounted(() => {
     <q-input class="search-asn" filled v-model="asn" label="ASN"  />
     <q-btn @click=searchASN() color="primary" label="Search"  style="min-width: 120px; margin-left:20px;"/>
   </div>
+  <h6> Network Topology Overview </h6>
 
 
   <VueFlow v-if="allNodes.length != 0"  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
@@ -321,12 +322,17 @@ onMounted(() => {
   margin-top: 30px;
 }
 
+h6 {
+  text-decoration: underline;
+  margin-top: 20px;
+  margin-bottom: 25px;
+}
+
 .vueTest{
   margin: 0 auto;
-  margin-top: 30px;
   border: black solid 4px;
-  width: 80%;
-  height: 80%;
+  width: 75%;
+  height: 75%;
 }
 
 .loading-spinner{
