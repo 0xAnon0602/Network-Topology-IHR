@@ -2,10 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { Background } from '@vue-flow/background'
 import { Position, VueFlow, MarkerType, useVueFlow, Panel } from '@vue-flow/core'
+import ToolbarNode from './ToolbarNode.vue'
 import axios from 'axios'
 import { QSpinner } from 'quasar'
 
-
+const { onNodeClick , onNodeMouseEnter, onNodeMouseLeave} = useVueFlow()
 const IYP_API_BASE = 'https://iyp.iijlab.net/iyp/db/neo4j/tx/'
 const DEFAULT_TIMEOUT = 180000
 
@@ -41,7 +42,7 @@ const nodes = ref([])
 const allNodes = ref([])
 const allNodesPosition = ref([])
 const allRelation = ref([])
-const asNames = ref({})
+const asInfo = ref({})
 const edges = ref([])
 
 const as_info_query = ref({
@@ -52,21 +53,21 @@ const as_info_query = ref({
           MATCH p = allShortestPaths((a)-[:PEERS_WITH*]-(d))
           WHERE a.asn <> d.asn AND all(r IN relationships(p) WHERE r.af = 4) AND all(n IN nodes(p) WHERE n IN dependencies)
           RETURN p`,
+
   query2:`MATCH (a:AS)
-          WHERE a.asn IN $asns
-          OPTIONAL MATCH (a)-[:NAME {reference_org: 'PeeringDB'}]->(pdbn:Name)
-          OPTIONAL MATCH (a)-[:NAME {reference_org: 'BGP.Tools'}]->(btn:Name)
-          OPTIONAL MATCH (a)-[:NAME {reference_org: 'RIPE NCC'}]->(ripen:Name)
-          WITH a.asn AS asn, [pdbn.name, btn.name, ripen.name] AS names
-          UNWIND names AS name
-          WITH asn, name
-          WHERE name IS NOT NULL
-          WITH asn, COLLECT(name) AS validNames
-          UNWIND validNames AS validName
-          WITH asn, validName
-          ORDER BY size(validName)
-          WITH asn, COLLECT(validName)[0] AS shortestName
-          RETURN asn, shortestName`
+          WHERE a.asn in $asns
+          OPTIONAL MATCH (a)-[:NAME {reference_org:'PeeringDB'}]->(pdbn:Name)
+          OPTIONAL MATCH (a)-[:NAME {reference_org:'BGP.Tools'}]->(btn:Name)
+          OPTIONAL MATCH (a)-[:NAME {reference_org:'RIPE NCC'}]->(ripen:Name)
+          OPTIONAL MATCH (a)-[:NAME]->(n:Name)
+          OPTIONAL MATCH (a)-[:MEMBER_OF]->(ixp:IXP)-[:COUNTRY]-(ixp_country:Country)
+          OPTIONAL MATCH (a)-[:COUNTRY {reference_name: 'nro.delegated_stats'}]->(c:Country)
+          RETURN a.asn AS ASN ,c.country_code AS CC, c.name AS Country, COALESCE(pdbn.name, btn.name, ripen.name) AS Name, count(DISTINCT ixp) as nb_ixp`,
+ 
+  query3:`MATCH  (a:AS {asn:$asn})-[d:DEPENDS_ON {af:4}]-> (b:AS)
+          WHERE a<>b 
+          RETURN a.asn AS ASN1,d.hege*100 AS HEGE,b.asn AS ASN2`
+
 })    
 
 const searchASN = async() => {
@@ -76,7 +77,7 @@ const searchASN = async() => {
   nodes.value = []
   allRelation.value = []
   edges.value = []
-  asNames.value = {}
+  asInfo.value = {}
   as_info_query.value.loading = true
 
   let uniqueASNs = []
@@ -197,16 +198,37 @@ const searchASN = async() => {
 
     const rows2 = response2.data.results
     const res2 = []
-    for (let i=0; i<rows.length; i++) {
+    for (let i=0; i<rows2.length; i++) {
       res2.push(formatResponse(rows2[i]))
     }
 
     for(const result of res2[0]){
-      asNames.value[result.asn] = result.shortestName
+      asInfo.value[result.ASN] = result
     }
 
-      
+    const  response3 = await axios_base.post('', {
+        statements: [{statement: as_info_query.value.query3, parameters:{ asn: Number(asn.value) }}]
+    })
+
+    const rows3 = response3.data.results
+    const res3 = []
+    for (let i=0; i<rows3.length; i++) {
+      res3.push(formatResponse(rows3[i]))
+    }
+
+    for(const result of res3[0]){
+      asInfo.value[result.ASN2].HEGE = result.HEGE
+    }
+
     sortNodes(indexOfLargest)
+
+    let nodesString = []
+
+    for(const nodes of allNodes.value){
+        for(const node of nodes){
+          nodesString.push(String(node))
+        }
+    }
 
   }catch(e){
     as_info_query.value.loading = false
@@ -251,7 +273,7 @@ const sortEdges = () => {
 const sortNodes = (index) => {
 
   nodes.values = []
-  nodes.value.push({id: asn.value, type: 'input', label: `AS${asn.value}<br />`, position: { x: 0, y: calculate(allNodes.value[index].length) } , sourcePosition: Position.Right})
+  nodes.value.push({id: asn.value, type: 'default', label: `AS${asn.value}`, position: { x: 0, y: calculate(allNodes.value[index].length) } , sourcePosition: Position.Right, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
 
   let x_index = 300
 
@@ -260,13 +282,13 @@ const sortNodes = (index) => {
     if(allNodes.value[i].length  == 1){
 
       for(let j=0 ; j!= allNodes.value[i].length ; j++) {
-        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: calculate(allNodes.value[index].length) }, sourcePosition: Position.Right, targetPosition: Position.Left})
+        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: calculate(allNodes.value[index].length) }, sourcePosition: Position.Right, targetPosition: Position.Left, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
       }
 
     }else{
 
       for(let j=0 ; j!= allNodes.value[i].length ; j++) {
-        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: allNodesPosition.value[i][j] }, sourcePosition: Position.Right, targetPosition: Position.Left})
+        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: allNodesPosition.value[i][j] }, sourcePosition: Position.Right, targetPosition: Position.Left, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
       }
 
 
@@ -279,6 +301,22 @@ const sortNodes = (index) => {
   sortEdges()
 
 }
+
+onNodeClick(({ node }) => {
+  asn.value = node.id
+  searchASN()
+})
+
+onNodeMouseEnter(({ node }) => {
+  node.data.toolbarVisible = true;
+  }
+)
+
+onNodeMouseLeave(({ node }) => {
+  node.data.toolbarVisible = false;
+  }
+)
+
 
 onMounted(() => {
   asn.value = "55836"
@@ -297,7 +335,12 @@ onMounted(() => {
   <h6> Network Topology Overview </h6>
 
 
-  <VueFlow v-if="allNodes.length != 0"  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
+  <VueFlow v-if="allNodes.length != 0 && !as_info_query.loading"  class="vueTest" :nodes="nodes" :edges="edges" fit-view-on-init>
+    
+    <template #node-default="nodeProps">
+      <ToolbarNode :data="nodeProps.data" :otherData="asInfo[Number(nodeProps.id)]" :label="nodeProps.label"  :isMain="nodeProps.id == asn ? true:false" />
+      </template>
+
     <Background patternColor="black" :gap=7 />
   </VueFlow>
 
@@ -338,6 +381,11 @@ h6 {
 .loading-spinner{
   margin-top: 200px;
 }
+
+.vue-flow__node:hover  {
+  fill: red;
+}
+
 
 
 
