@@ -4,7 +4,7 @@ import { Background } from '@vue-flow/background'
 import { Position, VueFlow, MarkerType, useVueFlow, Panel } from '@vue-flow/core'
 import ToolbarNode from './ToolbarNode.vue'
 import axios from 'axios'
-import { QSpinner } from 'quasar'
+import { QSpinner, QSelect } from 'quasar'
 
 const { onNodeClick , onNodeMouseEnter, onNodeMouseLeave} = useVueFlow()
 const IYP_API_BASE = 'https://iyp.iijlab.net/iyp/db/neo4j/tx/'
@@ -45,13 +45,17 @@ const allRelation = ref([])
 const asInfo = ref({})
 const edges = ref([])
 
+const ipVersionOptions = ref(["IPv4","IPv6"])
+const ipVersion = ref("IPv4")
+
+
 const as_info_query = ref({
   loading: false,
-  query:`MATCH (a:AS {asn: $asn})-[h:DEPENDS_ON {af:4}]->(d:AS)
+  query:`MATCH (a:AS {asn: $asn})-[h:DEPENDS_ON {af:$af}]->(d:AS)
           WITH a, COLLECT(DISTINCT d) AS dependencies
           UNWIND dependencies as d
           MATCH p = allShortestPaths((a)-[:PEERS_WITH*]-(d))
-          WHERE a.asn <> d.asn AND all(r IN relationships(p) WHERE r.af = 4) AND all(n IN nodes(p) WHERE n IN dependencies)
+          WHERE a.asn <> d.asn AND all(r IN relationships(p) WHERE r.af = $af) AND all(n IN nodes(p) WHERE n IN dependencies)
           RETURN p`,
 
   query2:`MATCH (a:AS)
@@ -64,7 +68,7 @@ const as_info_query = ref({
           OPTIONAL MATCH (a)-[:COUNTRY {reference_name: 'nro.delegated_stats'}]->(c:Country)
           RETURN a.asn AS ASN ,c.country_code AS CC, c.name AS Country, COALESCE(pdbn.name, btn.name, ripen.name) AS Name, count(DISTINCT ixp) as nb_ixp`,
  
-  query3:`MATCH  (a:AS {asn:$asn})-[d:DEPENDS_ON {af:4}]-> (b:AS)
+  query3:`MATCH  (a:AS {asn:$asn})-[d:DEPENDS_ON {af: $af}]-> (b:AS)
           WHERE a<>b 
           RETURN a.asn AS ASN1,d.hege*100 AS HEGE,b.asn AS ASN2`
 
@@ -82,9 +86,8 @@ const searchASN = async() => {
 
   let uniqueASNs = []
 
-
   const response = await axios_base.post('', {
-    statements: [{statement: as_info_query.value.query, parameters:{ asn: Number(asn.value) }}]
+    statements: [{statement: as_info_query.value.query, parameters:{ asn: Number(asn.value), af:Number(ipVersion.value[3])}}]
   })
 
   const rows = response.data.results
@@ -207,7 +210,7 @@ const searchASN = async() => {
     }
 
     const  response3 = await axios_base.post('', {
-        statements: [{statement: as_info_query.value.query3, parameters:{ asn: Number(asn.value) }}]
+        statements: [{statement: as_info_query.value.query3, parameters:{ asn: Number(asn.value),af:Number(ipVersion.value[3]) }}]
     })
 
     const rows3 = response3.data.results
@@ -330,6 +333,7 @@ onMounted(() => {
 
   <div class="search-div row">
     <q-input class="search-asn" filled v-model="asn" label="ASN"  />
+    <q-select style="margin-left:20px;"filled v-model="ipVersion" :options="ipVersionOptions" label="IP" />
     <q-btn @click=searchASN() color="primary" label="Search"  style="min-width: 120px; margin-left:20px;"/>
   </div>
   <h6> Network Topology Overview </h6>
