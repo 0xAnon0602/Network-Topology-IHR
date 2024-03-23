@@ -6,7 +6,7 @@ import ToolbarNode from './ToolbarNode.vue'
 import axios from 'axios'
 import { QSpinner, QSelect } from 'quasar'
 
-const { onNodeClick , onNodeMouseEnter, onNodeMouseLeave} = useVueFlow()
+const { onNodeMouseEnter, onNodeMouseLeave} = useVueFlow()
 const IYP_API_BASE = 'https://iyp.iijlab.net/iyp/db/neo4j/tx/'
 const DEFAULT_TIMEOUT = 180000
 
@@ -304,11 +304,6 @@ const sortNodes = (index) => {
   sortEdges()
 
 }
-
-onNodeClick(({ node }) => {
-  asn.value = node.id
-  searchASN()
-})
 
 onNodeMouseEnter(({ node }) => {
   node.data.toolbarVisible = true;
