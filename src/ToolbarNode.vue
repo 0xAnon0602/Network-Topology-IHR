@@ -17,18 +17,11 @@ defineProps(['data', 'isMain', 'label', 'otherData'])
 
   <QCard style="padding:10px" >
 
-    <div v-if="isMain" style="font-size:12px; margin:auto;">
+    <div  style="font-size:12px; margin:auto;">
       <div>Name: {{otherData.Name}}</div>
       <div>Country: {{otherData.Country}}</div>
+      <div v-if="!isMain" >Hegemony: {{otherData.HEGE.toFixed(5)}} %</div>
     </div>
-
-
-    <div v-else style="font-size:12px; margin:auto;">
-      <div>Name: {{otherData.Name}}</div>
-      <div>Country: {{otherData.Country}}</div>
-      <div>Hegemony: {{otherData.HEGE.toFixed(5)}} %</div>
-    </div>
-
 
   </QCard>
 

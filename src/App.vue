@@ -276,7 +276,7 @@ const sortEdges = () => {
 const sortNodes = (index) => {
 
   nodes.values = []
-  nodes.value.push({id: asn.value, type: 'default', label: `AS${asn.value}`, position: { x: 0, y: calculate(allNodes.value[index].length) } , sourcePosition: Position.Right, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
+  nodes.value.push({id: asn.value, type: 'default', label: `AS${asn.value}`, position: { x: 0, y: calculate(allNodes.value[index].length) }, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
 
   let x_index = 300
 
@@ -285,15 +285,14 @@ const sortNodes = (index) => {
     if(allNodes.value[i].length  == 1){
 
       for(let j=0 ; j!= allNodes.value[i].length ; j++) {
-        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: calculate(allNodes.value[index].length) }, sourcePosition: Position.Right, targetPosition: Position.Left, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
+        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: calculate(allNodes.value[index].length) }, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
       }
 
     }else{
 
       for(let j=0 ; j!= allNodes.value[i].length ; j++) {
-        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: allNodesPosition.value[i][j] }, sourcePosition: Position.Right, targetPosition: Position.Left, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
+        nodes.value.push({id: String(allNodes.value[i][j]), type: 'default', label: `AS${allNodes.value[i][j]}`, position: { x: x_index, y: allNodesPosition.value[i][j] }, data: { toolbarPosition: Position.Top, toolbarVisible: false }})
       }
-
 
     }
 
@@ -343,9 +342,10 @@ onMounted(() => {
     
     <template #node-default="nodeProps">
       <ToolbarNode :data="nodeProps.data" :otherData="asInfo[Number(nodeProps.id)]" :label="nodeProps.label"  :isMain="nodeProps.id == asn ? true:false" />
-      </template>
-
+    </template>
+    
     <Background patternColor="black" :gap=7 />
+
   </VueFlow>
 
   <div v-if="as_info_query.loading" class="loading-spinner">
